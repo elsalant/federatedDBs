@@ -17,9 +17,8 @@ def getTokenDict(request):
         logger.debug("----> payloadEncrypted = None !!")
     if (payloadEncrypted != None):
         noJWT = False
-        roleKey = ROLE_KEY
         try:
-            role = decryptJWT(payloadEncrypted, roleKey)
+            role = decryptJWT(payloadEncrypted, ROLE_KEY)
             # Role will be returned as a list.  To make life simple in the policy, assume that only
             # first element is the real role.  Maybe fix this one day...
             if type(role) is list:
@@ -28,9 +27,8 @@ def getTokenDict(request):
             logger.error("Error: no role in JWT!")
             role = 'ERROR NO ROLE!'
 
-        id = USER_KEY
         try:
-            user = decryptJWT(payloadEncrypted, id)
+          id = decryptJWT(payloadEncrypted, USER_KEY)
         except:
             logger.error("No id in JWT!")
     if (noJWT):
