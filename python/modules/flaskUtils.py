@@ -38,7 +38,7 @@ def genericQuery(request, sqlQuery):
     print('dataDF = ')
     print(dataDF)
     # Apply redaction
-    jDict = dataDF.to_dict()
+#    jDict = dataDF.to_dict()
     try:
         for resultDict in opaDict['transformations']:
             action = resultDict['action']
@@ -47,31 +47,33 @@ def genericQuery(request, sqlQuery):
                 columns = resultDict['columns']
                 for keySearch in columns:
  #                   recurseAndRedact(jDict, keySearch.split('.'), action)
-                    redact(jDict, keySearch, action)
+                    dataDF = redact(dataDF, keySearch, action)
     except:
         logger.debug('no redaction rules returned')
-    return(jDict)
+    return(dataDF)
 
 # Get all Observations
 @app.route('/allrecords',methods=['GET'])
 def allObservations(queryString=None):
     queryAll = setupQueries('ALL')
-    dataDict = genericQuery(request, queryAll)
-    print(dataDict)
-    if dataDict is None:
+    dataDF = genericQuery(request, queryAll)
+    print(dataDF)
+    if dataDF is None:
         return('')
-    return(json.dumps(dataDict), VALID_RETURN)
+    return(dataDF.to_json(orient='records'))
+ #   return(json.dumps(dataDict), VALID_RETURN)
 
 # Get Observations for a given id.  Id will be passed in the JWT
 @app.route('/myrecords',methods=['GET'])
 def patientObservations():
     tokenDict = getTokenDict(request)
     queryID = setupQueries(tokenDict[USER_KEY])
-    dataDict = genericQuery(request, queryID)
-    print(dataDict)
-    if dataDict is None:
+    dataDF = genericQuery(request, queryID)
+    print(dataDF)
+    if dataDF is None:
         return ('')
-    return (json.dumps(dataDict), VALID_RETURN)
+    return(dataDF.to_json(orient='records'))
+ #   return (json.dumps(dataDict), VALID_RETURN)
 
 def decryptJWT(encryptedToken, flatKey):
 # String with "Bearer <token>".  Strip out "Bearer"...
@@ -96,17 +98,19 @@ def decryptJWT(encryptedToken, flatKey):
                 return None
     return decodedKey
 
-def redact(jDict, keySearch, action):
+def redact(dataDF, keySearch, action):
     if len(keySearch) == 0:
-        return(jDict)
-    if not keySearch in jDict:
+        return(dataDF)
+    if not keySearch in dataDF.keys():
         print("ERROR: " + keySearch + " not found in data set!")
-        return(jDict)
+        return(dataDF)
     if action == 'RedactColumn':
-        jDict[keySearch] = 'XXX'
+        dataDF[keySearch] = 'XXX'
+        print('redacted')
     else:
-        del jDict[keySearch]
-    return(jDict)
+        del dataDF[keySearch]
+        return(dataDF)
+    return(dataDF)
 
 def setupQueries(forWhom):
     alphabet='abcdefghijklmnopqrstuvwxyz'
