@@ -7,8 +7,6 @@ import config
 import jwt
 
 import logging
-import json
-import os
 
 ACCESS_DENIED_CODE = 403
 ERROR_CODE = 406
@@ -32,9 +30,8 @@ def genericQuery(request, sqlQuery):
         logger.debug('filterAction = ' + str(filterAction))
         if filterAction == "BlockURL":
             return ("Access denied!", ACCESS_DENIED_CODE)
-    queryAll = setupQueries('ALL')
-    print('queryAll = ' + queryAll)
-    dataDF = queryPresto(queryAll)
+    print('sqlQuery = ' + sqlQuery)
+    dataDF = queryPresto(sqlQuery)
     print('dataDF = ')
     print(dataDF)
     # Apply redaction
@@ -60,8 +57,7 @@ def allObservations(queryString=None):
     print(dataDF)
     if dataDF is None:
         return('')
-    return(dataDF.to_json(orient='records'))
- #   return(json.dumps(dataDict), VALID_RETURN)
+    return(dataDF.to_json(orient='records'), VALID_RETURN)
 
 # Get Observations for a given id.  Id will be passed in the JWT
 @app.route('/myrecords',methods=['GET'])
@@ -72,7 +68,7 @@ def patientObservations():
     print(dataDF)
     if dataDF is None:
         return ('')
-    return(dataDF.to_json(orient='records'))
+    return(dataDF.to_json(orient='records'), VALID_RETURN)
  #   return (json.dumps(dataDict), VALID_RETURN)
 
 def decryptJWT(encryptedToken, flatKey):
