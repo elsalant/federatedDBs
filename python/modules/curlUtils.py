@@ -29,9 +29,9 @@ def composeAndExecuteOPACurl(requests, role, id):
                 {'action': 'JoinAndRedact', 'joinTable': 'Consent',
                             'whereclause': ' WHERE consent.provision_provision_0_period_end > CURRENT_TIMESTAMP',
                             'joinStatement': ' JOIN consent ON observation.subject_reference = consent.patient_reference ',
-                            'columns': ['id', 'subject.reference', 'subject.display']},
-        {'action': 'RedactColumn', 'description': 'redact columns: [id, subject.id]',
-         'intent': 'research', 'columns': ['id', 'subject.id'],
+                            'columns': ['subject.reference', 'subject.display']},
+        {'action': 'RedactColumn', 'description': 'redact columns: [subject.id]',
+         'intent': 'research', 'columns': ['subject.id'],
          'options': {'redactValue': 'XXXXX'}}]})
     opa_query_body = '{ \"input\": { \
         \"request\": { \

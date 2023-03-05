@@ -52,7 +52,7 @@ def genericQuery(request, sqlQuery):
 # Get all Observations
 @app.route('/allrecords',methods=['GET'])
 def allObservations(queryString=None):
-    queryAll = setupQueries('ALL')
+    queryAll = setupQueriesAll()
     dataDF = genericQuery(request, queryAll)
     print(dataDF)
     if dataDF is None:
@@ -63,7 +63,7 @@ def allObservations(queryString=None):
 @app.route('/myrecords',methods=['GET'])
 def patientObservations():
     tokenDict = getTokenDict(request)
-    queryID = setupQueries(tokenDict[USER_KEY])
+    queryID = setupQueriesUnion(tokenDict[USER_KEY])
     dataDF = genericQuery(request, queryID)
     print(dataDF)
     if dataDF is None:
@@ -108,7 +108,8 @@ def redact(dataDF, keySearch, action):
         return(dataDF)
     return(dataDF)
 
-def setupQueries(forWhom):
+# Get all observation resources
+def setupQueriesAll():
     alphabet='abcdefghijklmnopqrstuvwxyz'
     registries = config.cmDict['REGISTRIES']
     numRegistries = len(registries)
@@ -120,15 +121,65 @@ def setupQueries(forWhom):
         queryStr += item+'.observation' + ' '+alphabet[index]+', '
     # get rid of last ', '
     queryStr = queryStr[:-2]
-    if forWhom == 'ALL':
+    queryStr += ' WHERE '
+    for i in range(numRegistries-1):
+        queryStr += 'a.id = '+ alphabet[i+1]+'.id AND '
+    queryStr = queryStr[:-len(' AND')]+' LIMIT 5'
+    print('queryStr = ' + queryStr)
+    return(queryStr)
+
+# Get the observation resources for a given subject.id
+# The query template is like:
+'''
+WITH 
+subjects as (select json_extract(resource, '$.subject') from postgresqlk8s.public.observation subjects), 
+attributes as (select * from postgresqlk8s.public.observation attributes), 
+subjects1 as (select json_extract(resource, '$.subject') from postgresql.public.observation subjects),
+attributes1 as (select * from postgresqlk8s.public.observation attributes1)
+SELECT json_extract_scalar(subject,'$.id') ID, attributes.resource ATTRIBUTES
+FROM subjects as t(subject), attributes
+WHERE json_extract_scalar(subject,'$.id')='08723d97-8dd3-4481-a5f1-a9427488d729'
+UNION ALL
+SELECT json_extract_scalar(subject1,'$.id') ID, attributes1.resource ATTRIBUTES FROM subjects1 as t(subject1),
+attributes1 WHERE json_extract_scalar(subject1,'$.id')='urn:uuid:ad023201-471e-4780-b424-0eb172c074f2' limit 5;
+'''
+
+def setupQueriesUnion(id):
+    alphabet='abcdefghijklmnopqrstuvwxyz'
+    registries = config.cmDict['REGISTRIES']
+    numRegistries = len(registries)
+    queryStr = ' WITH '
+    for index, item in enumerate(registries):
+        queryStr = queryStr + "subjects"+str(index) + " as (SELECT json_extract(resource,'$.subject') FROM " \
+                +item+".observation subjects"+str(index) + "), " + \
+                   " attributes"+str(index) + " as (SELECT * FROM " \
+                 +item+".observation attributes"+str(index) + ") "
+        if (index != len(registries) -1):
+            queryStr += ', '
+    for index, item in enumerate(registries):
+        if index > 0:
+            queryStr += ' UNION ALL '
+        queryStr += " SELECT json_extract_scalar(subject"+str(index)+",'$.id') ID, attributes"+str(index) + ".resource ATTRIBUTES"+str(index) + \
+                " FROM subjects"+str(index)+" as t(subject"+str(index)+"), attributes"+str(index) + \
+               " WHERE json_extract_scalar(subject"+str(index)+",'$.id')=" + "'"+id+"'"
+    print('queryStr = ' + queryStr)
+    return(queryStr)
+
+def setupQueriesUnionOLD(id):
+    alphabet='abcdefghijklmnopqrstuvwxyz'
+    registries = config.cmDict['REGISTRIES']
+    numRegistries = len(registries)
+    queryStr = ''
+    for index, item in enumerate(registries):
+        if index > 0:
+            queryStr += ' UNION '
+        queryStr += ' SELECT '
+        queryStr = queryStr + alphabet[index]+'.id, ' +alphabet[index]+'.resource ' + item.upper().split('.')[0]  # alias cannot contain a '.'
+        queryStr = queryStr + ' FROM '
+        queryStr += item+'.observation ' +alphabet[index]
         queryStr += ' WHERE '
-        for i in range(numRegistries-1):
-            queryStr += 'a.id = '+ alphabet[i+1]+'.id AND '
-        queryStr = queryStr[:-len(' AND')]+' LIMIT 5'
-    else:   # ID string is being passed
-        for i in range(numRegistries - 1):
-            queryStr += 'a.id = ' + id + ' AND '
-        queryStr = queryStr[:-len(' AND')] + ' LIMIT 5'
+        queryStr += alphabet[index]+'.id =\''+id+'\' '
+
     print('queryStr = ' + queryStr)
     return(queryStr)
 
