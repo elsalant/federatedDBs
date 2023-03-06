@@ -21,7 +21,7 @@ logger = logging.getLogger('flaskUtils.py')
 logger.setLevel(logging.DEBUG)
 logger.info('setting log level to DEBUG')
 
-def genericQuery(request, sqlQuery):
+def genericQuery(request, sqlQuery, redactNeeded):
     tokenDict = getTokenDict(request)
     opaDict = composeAndExecuteOPACurl(request, tokenDict[ROLE_KEY], tokenDict[USER_KEY])
     logger.info('After call to OPA, opaDict = ' + str(opaDict))
@@ -32,28 +32,31 @@ def genericQuery(request, sqlQuery):
             return ("Access denied!", ACCESS_DENIED_CODE)
     print('sqlQuery = ' + sqlQuery)
     dataDF = queryPresto(sqlQuery)
+
     print('dataDF = ')
     print(dataDF)
     # Apply redaction
 #    jDict = dataDF.to_dict()
-    try:
-        for resultDict in opaDict['transformations']:
-            action = resultDict['action']
-            # Note: can have both "RedactColumn" and "BlockColumn" actions in line
-            if (action == 'RedactColumn' or action == 'BlockColumn'):
-                columns = resultDict['columns']
-                for keySearch in columns:
- #                   recurseAndRedact(jDict, keySearch.split('.'), action)
-                    dataDF = redact(dataDF, keySearch, action)
-    except:
-        logger.debug('no redaction rules returned')
+    if redactNeeded:
+        try:
+            for resultDict in opaDict['transformations']:
+                action = resultDict['action']
+                # Note: can have both "RedactColumn" and "BlockColumn" actions in line
+                if (action == 'RedactColumn' or action == 'BlockColumn'):
+                    columns = resultDict['columns']
+                    for keySearch in columns:
+     #                   recurseAndRedact(jDict, keySearch.split('.'), action)
+                        dataDF = redact(dataDF, keySearch, action)
+        except:
+            logger.debug('no redaction rules returned')
     return(dataDF)
 
-# Get all Observations
+# Get all Observations - meant for role=Researcher
 @app.route('/allrecords',methods=['GET'])
 def allObservations(queryString=None):
     queryAll = setupQueriesAll()
-    dataDF = genericQuery(request, queryAll)
+    redactNeeded = True
+    dataDF = genericQuery(request, queryAll, redactNeeded)
     print(dataDF)
     if dataDF is None:
         return('')
@@ -64,7 +67,8 @@ def allObservations(queryString=None):
 def patientObservations():
     tokenDict = getTokenDict(request)
     queryID = setupQueriesUnion(tokenDict[USER_KEY])
-    dataDF = genericQuery(request, queryID)
+    redactNeeded = False
+    dataDF = genericQuery(request, queryID, redactNeeded)
     print(dataDF)
     if dataDF is None:
         return ('')
@@ -124,7 +128,7 @@ def setupQueriesAll():
     queryStr += ' WHERE '
     for i in range(numRegistries-1):
         queryStr += 'a.id = '+ alphabet[i+1]+'.id AND '
-    queryStr = queryStr[:-len(' AND')]+' LIMIT 5'
+    queryStr = queryStr[:-len(' AND')]
     print('queryStr = ' + queryStr)
     return(queryStr)
 
@@ -162,6 +166,7 @@ def setupQueriesUnion(id):
         queryStr += " SELECT json_extract_scalar(subject"+str(index)+",'$.id') ID, attributes"+str(index) + ".resource ATTRIBUTES"+str(index) + \
                 " FROM subjects"+str(index)+" as t(subject"+str(index)+"), attributes"+str(index) + \
                " WHERE json_extract_scalar(subject"+str(index)+",'$.id')=" + "'"+id+"'"
+  #      queryStr += ' LIMIT 5'
     print('queryStr = ' + queryStr)
     return(queryStr)
 
