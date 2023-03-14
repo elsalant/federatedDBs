@@ -18,12 +18,16 @@ def queryPresto(sqlQuery):
     cur.execute(sqlQuery)
     records = cur.fetchall()
     flatJsonDF = pd.DataFrame()
-    for record in records:
-        print(record)
-        jsonData = record[1]
-        data = json.loads(jsonData)
- #       flatJsonDF = flatJsonDF.append(pd.json_normalize(data), ignore_index=True)
-        flatJsonDF = pd.concat([flatJsonDF, pd.json_normalize(data)], ignore_index=True)
+    USE_THIS = False
+    if USE_THIS:
+        for record in records:
+            print(record)
+            jsonData = record[1]
+            data = json.loads(jsonData)
+     #       flatJsonDF = flatJsonDF.append(pd.json_normalize(data), ignore_index=True)
+            flatJsonDF = pd.concat([flatJsonDF, pd.json_normalize(data)], ignore_index=True)
+    else:
+        flatJsonDF = pd.DataFrame(records)
     connectionPresto.close()
 
     # Not all records will have the same fields.  Gaps in numeric fields will be filled by "NaN" which breaks the JSON

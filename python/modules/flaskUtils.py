@@ -1,10 +1,11 @@
-from flask import Flask, request, redirect
+from flask import Flask, request, jsonify
 from curlUtils import composeAndExecuteOPACurl, handleQuery
 from prestoUtils import queryPresto
 from jwtUtils import getTokenDict
 from constants import USER_KEY, ROLE_KEY, TESTING
 import config
 import jwt
+import json
 
 import logging
 
@@ -72,7 +73,12 @@ def patientObservations():
     print(dataDF)
     if dataDF is None:
         return ('')
-    return(dataDF.to_json(orient='records'), VALID_RETURN)
+#    returnJson = dataDF.to_json(orient='records')
+    returnJson = dataDF.to_json(orient='split', index=False)
+    # prettify the return
+    parsedJson = json.loads(returnJson)
+    prettyJson = json.dumps(parsedJson, indent=2)
+    return(prettyJson, VALID_RETURN)
  #   return (json.dumps(dataDict), VALID_RETURN)
 
 def decryptJWT(encryptedToken, flatKey):
@@ -107,6 +113,9 @@ def redact(dataDF, keySearch, action):
     if action == 'RedactColumn':
         dataDF[keySearch] = 'XXX'
         print('redacted')
+    elif action == 'HashColumn':
+        dataDF[keySearch] = dataDF[keySearch].apply(hash)
+        print('column hashed')
     else:
         del dataDF[keySearch]
         return(dataDF)
@@ -159,6 +168,7 @@ def baseQuery(id):
             queryStr += " select PATIENTID, ENCOUNTER, VALUE, CODE from s" + str(index)
             if (id):
                 queryStr += " WHERE PATIENT_ID = '" + id + "'"
+    queryStr += ' LIMIT 50'
     print('queryStr = ' + queryStr)
     return (queryStr)
 
