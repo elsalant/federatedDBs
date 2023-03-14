@@ -1,6 +1,6 @@
 import prestodb
-import json
 import pandas as pd
+import json
 
 def queryPresto(sqlQuery):
     try:
@@ -18,14 +18,22 @@ def queryPresto(sqlQuery):
     cur.execute(sqlQuery)
     records = cur.fetchall()
     flatJsonDF = pd.DataFrame()
-    USE_THIS = False
-    if USE_THIS:
+    USE_THIS = True
+    if USE_THIS:  # Create on JSON string from the list of 4 separate strings
         for record in records:
-            print(record)
-            jsonData = record[1]
-            data = json.loads(jsonData)
+            jStr = '{'
+            for entry in record:
+                if not type(entry) is str:
+                    continue
+                jStr += entry[1:-1]+','
+            jStr = jStr[:-1]
+            jStr += '}'
+            jsonDict= json.loads(jStr)
+            flatJsonDF = pd.concat([flatJsonDF, pd.json_normalize(jsonDict)], ignore_index=True)
+
+ #           data = json.loads(jsonData)
      #       flatJsonDF = flatJsonDF.append(pd.json_normalize(data), ignore_index=True)
-            flatJsonDF = pd.concat([flatJsonDF, pd.json_normalize(data)], ignore_index=True)
+  #          flatJsonDF = pd.concat([flatJsonDF, pd.json_normalize(data)], ignore_index=True)
     else:
         flatJsonDF = pd.DataFrame(records)
     connectionPresto.close()

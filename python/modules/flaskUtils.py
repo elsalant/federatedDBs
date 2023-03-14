@@ -43,11 +43,10 @@ def genericQuery(request, sqlQuery, redactNeeded):
             for resultDict in opaDict['transformations']:
                 action = resultDict['action']
                 # Note: can have both "RedactColumn" and "BlockColumn" actions in line
-                if (action == 'RedactColumn' or action == 'BlockColumn'):
-                    columns = resultDict['columns']
-                    for keySearch in columns:
-     #                   recurseAndRedact(jDict, keySearch.split('.'), action)
-                        dataDF = redact(dataDF, keySearch, action)
+                columns = resultDict['columns']
+                for keySearch in columns:
+ #                   recurseAndRedact(jDict, keySearch.split('.'), action)
+                    dataDF = redact(dataDF, keySearch, action)
         except:
             logger.debug('no redaction rules returned')
     return(dataDF)
@@ -74,7 +73,7 @@ def patientObservations():
     if dataDF is None:
         return ('')
 #    returnJson = dataDF.to_json(orient='records')
-    returnJson = dataDF.to_json(orient='split', index=False)
+    returnJson = dataDF.to_json(orient='table', index=True)
     # prettify the return
     parsedJson = json.loads(returnJson)
     prettyJson = json.dumps(parsedJson, indent=2)
