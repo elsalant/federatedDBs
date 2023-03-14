@@ -66,7 +66,7 @@ def allObservations(queryString=None):
 @app.route('/myrecords',methods=['GET'])
 def patientObservations():
     tokenDict = getTokenDict(request)
-    queryID = setupQueriesUnion(tokenDict[USER_KEY])
+    queryID = setupQueriesPatient(tokenDict[USER_KEY])
     redactNeeded = False
     dataDF = genericQuery(request, queryID, redactNeeded)
     print(dataDF)
@@ -112,81 +112,66 @@ def redact(dataDF, keySearch, action):
         return(dataDF)
     return(dataDF)
 
-# Get all observation resources
-def setupQueriesAll():
-    alphabet='abcdefghijklmnopqrstuvwxyz'
-    registries = config.cmDict['REGISTRIES']
-    numRegistries = len(registries)
-    queryStr = 'select a.id ID'
-    for index, item in enumerate(registries):
-        queryStr = queryStr + ', '+alphabet[index]+'.resource ' + item.upper().split('.')[0]  # alias cannot contain a '.'
-    queryStr = queryStr + ' FROM '
-    for index, item in enumerate(registries):
-        queryStr += item+'.observation' + ' '+alphabet[index]+', '
-    # get rid of last ', '
-    queryStr = queryStr[:-2]
-    queryStr += ' WHERE '
-    for i in range(numRegistries-1):
-        queryStr += 'a.id = '+ alphabet[i+1]+'.id AND '
-    queryStr = queryStr[:-len(' AND')]
-    print('queryStr = ' + queryStr)
-    return(queryStr)
-
 # Get the observation resources for a given subject.id
 # The query template is like:
 '''
-WITH 
-subjects as (select json_extract(resource, '$.subject') from postgresqlk8s.public.observation subjects), 
-attributes as (select * from postgresqlk8s.public.observation attributes), 
-subjects1 as (select json_extract(resource, '$.subject') from postgresql.public.observation subjects),
-attributes1 as (select * from postgresqlk8s.public.observation attributes1)
-SELECT json_extract_scalar(subject,'$.id') ID, attributes.resource ATTRIBUTES
-FROM subjects as t(subject), attributes
-WHERE json_extract_scalar(subject,'$.id')='08723d97-8dd3-4481-a5f1-a9427488d729'
-UNION ALL
-SELECT json_extract_scalar(subject1,'$.id') ID, attributes1.resource ATTRIBUTES FROM subjects1 as t(subject1),
-attributes1 WHERE json_extract_scalar(subject1,'$.id')='urn:uuid:ad023201-471e-4780-b424-0eb172c074f2' limit 5;
+WITH s0 as 
+  (with source0 as (select id ID, resource RESOURCE, json_extract(resource, '$.subject') subjects 
+   FROM postgresqlk8s.public.observation) 
+   select json_extract_scalar(subjects,'$.id') PATIENT_ID, 
+     json_extract(subjects,'$.id') PATIENTID, 
+     json_extract(resource, '$.value') VALUE, 
+     json_extract(resource,'$.code') CODE,
+     json_extract(resource, '$.encounter') ENCOUNTER
+      from source0) , 
+s1 as 
+  (with source1 as (select id ID, resource RESOURCE, json_extract(resource, '$.subject') subjects 
+  FROM postgresqlk8s.public.observation) 
+  select json_extract_scalar(subjects,'$.id') PATIENT_ID, 
+    subjects PATIENTID, json_extract(resource, '$.value') VALUE, 
+    json_extract(resource,'$.code') CODE,
+    json_extract(resource, '$.encounter') ENCOUNTER 
+     from source1) 
+    SELECT PATIENTID, ENCOUNTER, VALUE, CODE from s0 WHERE PATIENT_ID = 'urn:uuid:ccef190b-3282-47a3-8a38-be111c4ab299' 
+UNION ALL 
+  select PATIENTID, ENCOUNTER, VALUE, CODE from s1 WHERE PATIENT_ID = 'urn:uuid:ccef190b-3282-47a3-8a38-be111c4ab299' 
+  limit 5;
 '''
 
-def setupQueriesUnion(id):
-    alphabet='abcdefghijklmnopqrstuvwxyz'
+def baseQuery(id):
     registries = config.cmDict['REGISTRIES']
     numRegistries = len(registries)
     queryStr = ' WITH '
-    for index, item in enumerate(registries):
-        queryStr = queryStr + "subjects"+str(index) + " as (SELECT json_extract(resource,'$.subject') FROM " \
-                +item+".observation subjects"+str(index) + "), " + \
-                   " attributes"+str(index) + " as (SELECT * FROM " \
-                 +item+".observation attributes"+str(index) + ") "
-        if (index != len(registries) -1):
+    for index in range(numRegistries):
+        queryStr = queryStr + "s" + str(index) + " as (with source" + str(
+            index) + " as (select id ID, resource RESOURCE, json_extract(resource, '$.subject') subjects  FROM " \
+                   + registries[0] + ".observation) " + \
+                   " select json_extract_scalar(subjects,'$.id') PATIENT_ID, subjects PATIENTID, json_extract(resource, '$.value') VALUE, json_extract(resource,'$.code') CODE, json_extract(resource, '$.encounter') ENCOUNTER from source" + str(
+            index) + ") "
+        if (index != len(registries) - 1 and len(registries) > 1):
             queryStr += ', '
-    for index, item in enumerate(registries):
-        if index > 0:
+    queryStr += " SELECT PATIENTID, ENCOUNTER, VALUE, CODE from s0 "
+    if (id):
+        queryStr += " WHERE PATIENT_ID = '"+id+"'"
+    if numRegistries > 1:
+        for index in range(1, numRegistries):
             queryStr += ' UNION ALL '
-        queryStr += " SELECT json_extract_scalar(subject"+str(index)+",'$.id') ID, attributes"+str(index) + ".resource ATTRIBUTES"+str(index) + \
-                " FROM subjects"+str(index)+" as t(subject"+str(index)+"), attributes"+str(index) + \
-               " WHERE json_extract_scalar(subject"+str(index)+",'$.id')=" + "'"+id+"'"
-  #      queryStr += ' LIMIT 5'
+            queryStr += " select PATIENTID, ENCOUNTER, VALUE, CODE from s" + str(index)
+            if (id):
+                queryStr += " WHERE PATIENT_ID = '" + id + "'"
+    print('queryStr = ' + queryStr)
+    return (queryStr)
+
+def setupQueriesPatient(id):
+    queryStr = baseQuery(id)
     print('queryStr = ' + queryStr)
     return(queryStr)
 
-def setupQueriesUnionOLD(id):
-    alphabet='abcdefghijklmnopqrstuvwxyz'
-    registries = config.cmDict['REGISTRIES']
-    numRegistries = len(registries)
-    queryStr = ''
-    for index, item in enumerate(registries):
-        if index > 0:
-            queryStr += ' UNION '
-        queryStr += ' SELECT '
-        queryStr = queryStr + alphabet[index]+'.id, ' +alphabet[index]+'.resource ' + item.upper().split('.')[0]  # alias cannot contain a '.'
-        queryStr = queryStr + ' FROM '
-        queryStr += item+'.observation ' +alphabet[index]
-        queryStr += ' WHERE '
-        queryStr += alphabet[index]+'.id =\''+id+'\' '
-
-    print('queryStr = ' + queryStr)
+# Get all observation resources
+def setupQueriesAll():
+    queryStr = baseQuery(None)
     return(queryStr)
+
 
 def startServer():
     app.run(port=FLASK_PORT_NUM, host='0.0.0.0')
