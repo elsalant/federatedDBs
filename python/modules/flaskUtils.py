@@ -60,7 +60,12 @@ def allObservations(queryString=None):
     print(dataDF)
     if dataDF is None:
         return('')
-    return(dataDF.to_json(orient='records'), VALID_RETURN)
+    returnJson = dataDF.to_json(orient='table', index=True)
+    # prettify the return
+    parsedJson = json.loads(returnJson)
+    prettyJson = json.dumps(parsedJson, indent=2)
+    return(prettyJson, VALID_RETURN)
+ #   return(dataDF.to_json(orient='records'), VALID_RETURN)
 
 # Get Observations for a given id.  Id will be passed in the JWT
 @app.route('/myrecords',methods=['GET'])

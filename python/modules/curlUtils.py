@@ -30,8 +30,8 @@ def composeAndExecuteOPACurl(requests, role, id):
                             'whereclause': ' WHERE consent.provision_provision_0_period_end > CURRENT_TIMESTAMP',
                             'joinStatement': ' JOIN consent ON observation.subject_reference = consent.patient_reference ',
                             'columns': ['subject.reference', 'subject.display']},
-        {'action': 'HashColumn', 'description': 'redact columns: [subject.id]',
-         'intent': 'research', 'columns': ['subject.id'],
+        {'action': 'HashColumn', 'description': 'redact columns: [id, reference]',
+         'intent': 'research', 'columns': ['id', 'reference'],
          'options': {'redactValue': 'XXXXX'}}]})
     opa_query_body = '{ \"input\": { \
         \"request\": { \
