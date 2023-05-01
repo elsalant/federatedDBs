@@ -23,32 +23,32 @@ logger.setLevel(logging.DEBUG)
 logger.info('setting log level to DEBUG')
 
 def genericQuery(request, sqlQuery, redactNeeded):
+    print('in genericQuery: sqlQuery = ' + sqlQuery)
     tokenDict = getTokenDict(request)
-    opaDict = composeAndExecuteOPACurl(request, tokenDict[ROLE_KEY], tokenDict[USER_KEY])
+    opaDict = composeAndExecuteOPACurl(tokenDict[ROLE_KEY], tokenDict[USER_KEY])
     logger.info('After call to OPA, opaDict = ' + str(opaDict))
-    for resultDict in opaDict['transformations']:
-        filterAction = resultDict['action']
+    resultList = opaDict['result']
+    for actionDict in resultList:
+        if not 'action' in actionDict:
+            continue
+        actions = actionDict['action']
+        # We have a list of action
+        filterAction = actions['name']
         logger.debug('filterAction = ' + str(filterAction))
         if filterAction == "BlockURL":
             return ("Access denied!", ACCESS_DENIED_CODE)
-    print('sqlQuery = ' + sqlQuery)
-    dataDF = queryPresto(sqlQuery)
-
-    print('dataDF = ')
-    print(dataDF)
-    # Apply redaction
-#    jDict = dataDF.to_dict()
-    if redactNeeded:
-        try:
-            for resultDict in opaDict['transformations']:
-                action = resultDict['action']
-                # Note: can have both "RedactColumn" and "BlockColumn" actions in line
-                columns = resultDict['columns']
-                for keySearch in columns:
- #                   recurseAndRedact(jDict, keySearch.split('.'), action)
-                    dataDF = redact(dataDF, keySearch, action)
-        except:
-            logger.debug('no redaction rules returned')
+        elif filterAction == 'RedactColumn' or filterAction == 'HashColumn':
+            columns = actions['columns']
+            dataDF = queryPresto(sqlQuery)
+            print('dataDF = ')
+            print(dataDF)
+            for keySearch in columns:
+                # recurseAndRedact(jDict, keySearch.split('.'), action)
+                dataDF = redact(dataDF, keySearch, filterAction)
+            else:
+                logger.debug('no redaction rules returned')
+        else:
+            print("redaction action "+filterAction+" not recognized!")
     return(dataDF)
 
 # Get all Observations - meant for role=Researcher
@@ -84,7 +84,7 @@ def patientObservations():
     prettyJson = json.dumps(parsedJson, indent=2)
     return(prettyJson, VALID_RETURN)
  #   return (json.dumps(dataDict), VALID_RETURN)
-
+'''
 def decryptJWT(encryptedToken, flatKey):
 # String with "Bearer <token>".  Strip out "Bearer"...
     prefix = 'Bearer'
@@ -107,7 +107,7 @@ def decryptJWT(encryptedToken, flatKey):
                 logger.debug("warning: " + s + " not found in decodedKey!")
                 return None
     return decodedKey
-
+'''
 def redact(dataDF, keySearch, action):
     if len(keySearch) == 0:
         return(dataDF)

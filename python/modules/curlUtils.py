@@ -3,40 +3,31 @@ import requests
 import os
 import logging
 import json
-from constants import TESTING
+from constants import TESTING, TESTING_NO_OPA
 
 logger = logging.getLogger('curlUtils.py')
 logger.setLevel(logging.DEBUG)
 
-
 if TESTING:
     OPA_SERVER = 'localhost'
 else:
-    OPA_SERVER = 'opa.default'
+    OPA_SERVER = 'opa.fybrik-system'
 
 OPA_PORT = os.getenv("OPA_SERVICE_PORT") if os.getenv("OPA_SERVICE_PORT") else 8181
 OPA_ENDPT = os.getenv("OPA_URL") if os.getenv("OPA_URL") else '/v1/data/dataapi/authz/rule'
 OPA_HEADER = {"Content-Type": "application/json"}
 ASSET_NAMESPACE = os.getenv("ASSET_NAMESPACE") if os.getenv("ASSET_NAMESPACE") else 'default'
 
-def composeAndExecuteOPACurl(requests, role, id):
+def composeAndExecuteOPACurl(role, id):
 
     ## TBD - role is being put into the header as a string - it should go in as a list for Rego.  What we are doing
     ## now requires the Rego to do a substring search, rather than search in a list
-    if TESTING:
-        return({'SUBMITTER': 'EliotSalant', 'assetID': 'test1', 'SECRET_NSPACE': 'rest-fhir',
-          'SECRET_FNAME': 'fhir-credentials', 'FHIR_SERVER' : 'https://localhost:9443/fhir-server/api/v4/', 'transformations': [
-                {'action': 'JoinAndRedact', 'joinTable': 'Consent',
-                            'whereclause': ' WHERE consent.provision_provision_0_period_end > CURRENT_TIMESTAMP',
-                            'joinStatement': ' JOIN consent ON observation.subject_reference = consent.patient_reference ',
-                            'columns': ['subject.reference', 'subject.display']},
-        {'action': 'HashColumn', 'description': 'redact columns: [id, reference]',
-         'intent': 'research', 'columns': ['id', 'reference'],
-         'options': {'redactValue': 'XXXXX'}}]})
+    if TESTING_NO_OPA:
+        return({'decision_id': 'ffa2de2a-bc0d-4cb6-9c89-3c385afc3ec5', 'result': [{}, {'action': {'name': 'HashColumn', 'columns': 'some columns', 'description': 'Hash PII values'}}, {'action': {'name': 'Testing', 'columns': 'some columns', 'description': 'Just testing'}}]})
     opa_query_body = '{ \"input\": { \
         \"request\": { \
         \"role\": \"' + str(role) + '\", \
-        \"id\": \"' + str(id) + '\", \
+        \"id\": \"' + str(id) + '\" \
         }  \
         }  \
         }'

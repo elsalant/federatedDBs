@@ -1,0 +1,40 @@
+apiVersion: katalog.fybrik.io/v1alpha1
+kind: Asset
+metadata:
+  name: observation-json
+spec:
+  details:
+    connection:
+      fhir:
+        fhirServer: https://fhir-sandbox.heirproject.eu/fhir-server/api/v4/
+        namespace: rest-fhir
+        port: 9443
+        secretRef: fhir-credentials
+      name: fhir
+    dataFormat: json
+  metadata:
+    columns:
+    - name: subject.reference
+      tags:
+        PII: true
+    - name: subject.display
+      tags:
+        PII: true
+    - name: performer.reference
+      tags:
+        PII: true
+    - name: performer.display
+      tags:
+        PII: false
+    - name: encounter.reference
+      tags:
+        PII: true
+    - name: performer
+      tags:
+        PII: true
+    geography: UK
+    name: observation
+    tags:
+      observation: true
+  secretRef:
+    name: fhir-credentials

@@ -1,0 +1,1 @@
+curl http://127.0.0.1:5559/myrecords -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiUGF0aWVudCIsImlkIjoidXJuOnV1aWQ6Y2NlZjE5MGItMzI4Mi00N2EzLThhMzgtYmUxMTFjNGFiMjk5In0.bQO4x78rZYu119wPoxrTB8nG_cdUu7qYk5iSDa4YKpk"

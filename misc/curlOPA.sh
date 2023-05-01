@@ -1,0 +1,1 @@
+curl -X POST http://localhost:8181/v1/data/dataapi/authz/rule --data-binary '{ "input": {"request": {"method": "POST","role": "Editor", "user": "Video Booth User", "situationStatus": "safe", "asset": {"namespace": "default","name": "video"}}}}'

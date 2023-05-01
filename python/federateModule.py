@@ -4,7 +4,10 @@ import flaskUtils
 import yaml
 import config
 
-CM_PATH = '/etc/conf/conf.yaml' # from the "volumeMounts" parameter in templates/deployment.yaml
+if TESTING:
+    CM_PATH = '../yaml/postgres_config.yaml'
+else:      # Mount from Fybrik
+    CM_PATH = '/etc/conf/conf.yaml' # from the "volumeMounts" parameter in templates/deployment.yaml
 if TESTING:
     PIIfields = ['id', 'name', 'maritalStatus']
 
@@ -18,15 +21,14 @@ ALL_QUERY = "select a.id ID, a.resource SOURCE1, c.resource SOURCE2 \
 logger = logging.getLogger(__name__)
 
 def readConfig(path):
-    if not TESTING:
-        try:
-            with open(path, 'r') as stream:
-                cmReturn = yaml.safe_load(stream)
-        except Exception as e:
-            raise ValueError('Error reading from file! ' + path)
-    else:
-        config.cmDict = {'REGISTRIES': ['postgresqlk8s.public', 'postgresql.public' ]}
-        return(config.cmDict)
+    try:
+        with open(path, 'r') as stream:
+            cmReturn = yaml.safe_load(stream)
+    except Exception as e:
+        raise ValueError('Error reading from file! ' + path)
+#    else:    # Basic testing mode
+#        config.cmDict = {'REGISTRIES': ['postgresql1.public', 'postgresql.public' ]}
+#        return(config.cmDict)
     config.cmDict = cmReturn.get('data', [])
     logger.info(f'cmReturn = ', cmReturn)
     return(config.cmDict)

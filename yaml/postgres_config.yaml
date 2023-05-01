@@ -1,0 +1,6 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-config
+data:
+  REGISTRIES: ["postgresql1.public", "postgresql.public"]
