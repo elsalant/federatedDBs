@@ -3,6 +3,7 @@ import requests
 import os
 import logging
 import json
+import yaml
 from constants import TESTING, TESTING_NO_OPA
 
 logger = logging.getLogger('curlUtils.py')
@@ -23,14 +24,31 @@ def composeAndExecuteOPACurl(role, id):
     ## TBD - role is being put into the header as a string - it should go in as a list for Rego.  What we are doing
     ## now requires the Rego to do a substring search, rather than search in a list
     if TESTING_NO_OPA:
-        return({'decision_id': 'ffa2de2a-bc0d-4cb6-9c89-3c385afc3ec5', 'result': [{}, {'action': {'name': 'HashColumn', 'columns': 'some columns', 'description': 'Hash PII values'}}, {'action': {'name': 'Testing', 'columns': 'some columns', 'description': 'Just testing'}}]})
-    opa_query_body = '{ \"input\": { \
-        \"request\": { \
-        \"role\": \"' + str(role) + '\", \
-        \"id\": \"' + str(id) + '\" \
-        }  \
-        }  \
-        }'
+        return({'decision_id': 'ffa2de2a-bc0d-4cb6-9c89-3c385afc3ec5', 'result': [{}, {'action': {'name': 'HashColumn', 'columns': '["id"]', 'description': 'Hash PII values'}}, {'action': {'name': 'Testing', 'columns': '["id"]', 'description': 'Just testing'}}]})
+    ## When running as a Fybrik module, the Assets will automatically be sent to OPA as input.  In test mode, let's
+    ## read directly the information from the asset yaml file and pass that to OPA here.
+    if TESTING:
+        ASSET_PATH = '../yaml/asset.yaml'
+        try:
+            with open(ASSET_PATH, 'r') as stream:
+                assetValues = yaml.safe_load(stream)
+        except Exception as e:
+            raise ValueError('Error reading from file! ' + ASSET_PATH)
+        opa_query_body = '{ \"input\": { \
+                \"request\": { \
+                \"role\": \"' + str(role) + '\", \
+                \"id\": \"' + str(id) + '\" \
+                }, \
+                \"resource\":' + json.dumps(assetValues["spec"]) + '}  \
+                }'
+    else:
+        opa_query_body = '{ \"input\": { \
+            \"request\": { \
+            \"role\": \"' + str(role) + '\", \
+            \"id\": \"' + str(id) + '\" \
+            }  \
+            }  \
+            }'
 
     urlString = 'http://' + OPA_SERVER + ":" + str(OPA_PORT) + OPA_ENDPT
     logger.debug('For OPA query: urlString = ' + urlString + " opa_query_body " + opa_query_body)

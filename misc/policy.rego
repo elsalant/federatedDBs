@@ -1,8 +1,7 @@
 package dataapi.authz
 
-rule[{"action": {"name": "HashColumn", "description": description, "columns": column_names}, "intent":intent}] {
+rule[{"action": {"name": "HashColumn", "description": description, "columns": column_names}}] {
     description := "Hash PII values"
-    columns := [input.resource.metadata.columns[i].name | input.resource.metadata.columns[i].tags.PII]
-    intent := "research"
-    count(columns) > 0
+    column_names := [input.resource.metadata.columns[i].name | input.resource.metadata.columns[i].tags.PII]
+    count(column_names) > 0
 }

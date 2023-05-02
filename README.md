@@ -41,13 +41,30 @@ to the host.
        exit     # leave the docker container
 3. pg_load test1 < /User/eliot/temp/exportDB.sql
 
-If Fybrik is running:
+With Fybrik running:
 4. Load the policy:
    misc/applyPolicy.sh
 5. Load the asset:
    kubectl apply -f yaml/asset.yaml
 6. kubectl port-forward svc/opa 8181 -n fybrik-system
 
+## To run Presto
+Catalogs describing databases in /Users/eliot/projects/HEIR/code/postgres/presto-server-0.279/etc/catalog
+Make sure the correct external IP for k8s postgres server is configured in the postgresqlk8s.properties and postgresl.properties 
+file!
+Check if port 8080 is taken!:  On the Mac: lsof -i :8080
+> presto-server run
+NOTE: stop and restart server if the catalog is configured!!
+
+Test the Presto connection:
+from /Users/eliot/projects/HEIR/code/postgres/presto-server-0.279
+./presto --server localhost:8080 --catalog postgresql --catalog postgresql1 --schema public
+
+Query:
+select * from postgresql1.public.patient LIMIT 5;
+
+
+# Developer mode
 ### Kubernetes directions for loading database on postgres - only do this once
 1. kubectl edit svc/<svc name> and change type to "LoadBalancer"
 2. load database with: psql -h localhost -U eliot -d synthea -p 5432 -f /Users/eliot/projects/HEIR/synthea/syntheaExport.sql
@@ -71,20 +88,6 @@ select resource->'name'->0->'family' from patient limit 5;
  "Nicolas769"
 (5 rows)
 
-## To run Presto
-Catalogs describing databases in /Users/eliot/projects/HEIR/code/postgres/presto-server-0.279/etc/catalog
-Make sure the correct external IP for k8s postgres server is configured in the postgresqlk8s.properties and postgresl.properties 
-file!
-Note that the postgresql server runs in the postgresql namespace!
-kubectl get svc -n postgresql
-
->/Users/eliot/projects/HEIR/code/postgres/presto-server-0.279/bin/launcher start 
-
-(ALTERNATIVELY, > presto-server run    in order to get verbose mode.
-Check if port 8080 is taken:  On the Mac: lsof -i :8080 )
-NOTE: stop and restart server if the catalog is configured!!
-
-# Developer mode
 ## Testing SQL commands
 from /Users/eliot/projects/HEIR/code/postgres/presto-server-0.279
 ./presto --server localhost:8080 --catalog postgresql --catalog postgresql1 --schema public
