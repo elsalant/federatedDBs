@@ -63,6 +63,9 @@ from /Users/eliot/projects/HEIR/code/postgres/presto-server-0.279
 Query:
 select * from postgresql1.public.patient LIMIT 5;
 
+## To test:
+misc/curlPatient.sh
+misc/curlResearcher.sh
 
 # Developer mode
 ### Kubernetes directions for loading database on postgres - only do this once

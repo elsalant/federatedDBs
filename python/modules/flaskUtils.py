@@ -28,6 +28,9 @@ def genericQuery(request, sqlQuery, redactNeeded):
     opaDict = composeAndExecuteOPACurl(tokenDict[ROLE_KEY], tokenDict[USER_KEY])
     logger.info('After call to OPA, opaDict = ' + str(opaDict))
     resultList = opaDict['result']
+    dataDF = queryPresto(sqlQuery)
+    print('dataDF = ')
+    print(dataDF)
     for actionDict in resultList:
         if not 'action' in actionDict:
             continue
@@ -39,9 +42,6 @@ def genericQuery(request, sqlQuery, redactNeeded):
             return ("Access denied!", ACCESS_DENIED_CODE)
         elif filterAction == 'RedactColumn' or filterAction == 'HashColumn':
             columns = actions['columns']
-            dataDF = queryPresto(sqlQuery)
-            print('dataDF = ')
-            print(dataDF)
             for keySearch in columns:
                 # recurseAndRedact(jDict, keySearch.split('.'), action)
                 dataDF = redact(dataDF, keySearch, filterAction)
